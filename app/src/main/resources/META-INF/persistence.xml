@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="3.0"
+             xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence
+                                 https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd">
+
+    <!-- Production persistence unit -->
+    <persistence-unit name="task-management-pu" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+        <class>task.management.domain.Task</class>
+        <class>task.management.domain.Board</class>
+        <class>task.management.domain.BoardColumn</class>
+        <class>task.management.domain.Card</class>
+        <class>task.management.domain.Blockade</class>
+        <class>task.management.domain.ColumnHistory</class>
+        <properties>
+            <!-- Database connection -->
+            <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
+            <property name="jakarta.persistence.jdbc.url" value="${db.url}"/>
+            <property name="jakarta.persistence.jdbc.user" value="${db.username}"/>
+            <property name="jakarta.persistence.jdbc.password" value="${db.password}"/>
+            
+            <!-- Hibernate properties -->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
+            <property name="hibernate.show_sql" value="false"/>
+            <property name="hibernate.format_sql" value="true"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+            
+            <!-- Connection pool settings -->
+            <property name="hibernate.connection.pool_size" value="5"/>
+        </properties>
+    </persistence-unit>
+
+    <!-- Test persistence unit with H2 in-memory database -->
+    <persistence-unit name="test-pu" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+        <class>task.management.domain.Task</class>
+        <class>task.management.domain.Board</class>
+        <class>task.management.domain.BoardColumn</class>
+        <class>task.management.domain.Card</class>
+        <class>task.management.domain.Blockade</class>
+        <class>task.management.domain.ColumnHistory</class>
+        <properties>
+            <!-- H2 in-memory database for testing -->
+            <property name="jakarta.persistence.jdbc.driver" value="org.h2.Driver"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1"/>
+            <property name="jakarta.persistence.jdbc.user" value="sa"/>
+            <property name="jakarta.persistence.jdbc.password" value=""/>
+            
+            <!-- Hibernate properties -->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
+            <property name="hibernate.show_sql" value="false"/>
+            <property name="hibernate.format_sql" value="true"/>
+            <property name="hibernate.hbm2ddl.auto" value="create-drop"/>
+        </properties>
+    </persistence-unit>
+
+</persistence>

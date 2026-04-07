@@ -1,0 +1,63 @@
+# Auto detect text files
+* text=auto
+
+# Java / Kotlin
+*.java text diff=java
+*.kt text
+
+# Gradle
+*.gradle text
+*.gradle.kts text diff=java
+gradle.properties text
+
+# Wrapper
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+
+# Config
+*.xml text
+*.properties text
+*.yml text
+*.yaml text
+*.json text
+
+# SQL
+*.sql text diff=sql
+
+# Docs
+*.md text diff=markdown
+*.txt text
+
+# Scripts
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# Binary
+*.jar binary
+*.war binary
+*.ear binary
+*.zip binary
+*.tar.gz binary
+*.rar binary
+*.class binary
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text
+
+# IDE
+*.iml text
+.project text
+.classpath text
+
+# DB
+*.db binary
+*.h2.db binary
+
+# OS
+.DS_Store binary
+Thumbs.db binary

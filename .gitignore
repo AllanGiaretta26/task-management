@@ -1,0 +1,50 @@
+# Gradle
+.gradle/
+build/
+app/build/
+app/bin/
+
+# Database credentials (sensitive information)
+**/database.properties
+
+# Logs
+logs/
+app/logs/
+
+# IDE-specific files
+.qwen/
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.settings/
+.classpath
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Java compiled classes
+**/*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# JVM crash logs
+hs_err_pid*
+replay_pid*
+
+# Documentation
+docs/
