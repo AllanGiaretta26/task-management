@@ -1,28 +1,49 @@
 # Task Management System
 
-![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
+![Status](https://img.shields.io/badge/status-concluído-brightgreen)
 ![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white)
 ![Gradle](https://img.shields.io/badge/Gradle-9.2-02303A?logo=gradle&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)
 ![License](https://img.shields.io/badge/licença-MIT-blue)
 
-> Aplicação CLI de gerenciamento de tarefas e boards Kanban, com fluxo sequencial de cards, bloqueios com justificativa e histórico completo de movimentações.
+> Aplicação CLI de boards Kanban com fluxo sequencial de cards, bloqueios com justificativa e histórico completo de movimentações.
 
 ---
 
 ## 📋 Descrição
 
-O **Task Management System** é uma aplicação de linha de comando que une um gerenciador de tarefas com prioridades a um sistema de boards no estilo Kanban. Cards percorrem colunas em ordem sequencial, podem ser bloqueados com justificativa registrada, e todo o histórico de movimentação é rastreado para geração de relatórios.
+O **Task Management System** é uma aplicação de linha de comando para gerenciamento de projetos no estilo Kanban. Cards percorrem colunas em ordem sequencial, podem ser bloqueados com justificativa registrada, e todo o histórico de movimentação é rastreado para geração de relatórios.
 
-O projeto foi desenvolvido para demonstrar boas práticas de arquitetura em camadas, uso de ORM com Hibernate JPA, versionamento de banco de dados com Flyway e testes automatizados com JUnit 5.
+O projeto demonstra boas práticas de arquitetura em camadas (UI → Service → Repository → JPA), ORM com Hibernate, versionamento de banco de dados com Flyway e testes automatizados com JUnit 5, incluindo testes de integração contra banco H2 in-memory.
 
 ---
 
 ## 🚦 Status do Projeto
 
-![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
+![Status](https://img.shields.io/badge/status-concluído-brightgreen)
 
-Funcionalidades principais implementadas e cobertas por testes. Projeto em evolução ativa.
+Funcionalidades principais implementadas e cobertas por 65 testes (unitários + integração). Arquitetura finalizada.
+
+---
+
+## 🏗️ Arquitetura
+
+A aplicação segue o padrão de camadas:
+
+```
+UI (BoardMenu)
+  └── Service (BoardService, CardService, ReportService)
+        └── Repository (BoardRepository, CardRepository)
+              └── JPA / Hibernate → MySQL
+```
+
+**Decisões de design notáveis:**
+
+- **EntityManager per-operation**: cada método de service abre e fecha seu próprio `EntityManager` via `try-with-resources`. Isso elimina acúmulo de cache de 1º nível durante a sessão CLI e o risco de `LazyInitializationException` — o grafo lazy (colunas → cards → bloqueios → histórico) é inflado antes do EM fechar, e a entidade é devolvida detached.
+- **Flyway**: migrações versionadas garantem evolução controlada do schema (3 versões aplicadas).
+- **Repositório**: separa o acesso a dados da lógica de negócio; torna os services testáveis isoladamente.
+- **Modelo de domínio limpo**: a entidade legada `Task` foi removida — todo o fluxo de trabalho agora se apoia em `Card` + `BoardColumn` + `ColumnHistory` + `Blockade`, que refletem melhor o modelo Kanban.
+- **Mapeamento de enums estável**: colunas `type` e `operation_type` usam `@Enumerated(EnumType.STRING)` com `columnDefinition = "VARCHAR(20)"`, evitando divergências entre o DDL gerado pelo Hibernate e o schema aplicado pelo Flyway.
 
 ---
 
@@ -35,13 +56,15 @@ Funcionalidades principais implementadas e cobertas por testes. Projeto em evolu
 ![Flyway](https://img.shields.io/badge/Flyway-12.3.0-CC0200)
 ![JUnit5](https://img.shields.io/badge/JUnit-5-25A162?logo=junit5&logoColor=white)
 
-- **Java 21** — linguagem principal
-- **Gradle 9.2** — build e gerenciamento de dependências
-- **MySQL 8.0+** — banco de dados relacional
-- **Hibernate JPA 6.4.4** — ORM e persistência
-- **Flyway 12.3.0** — migrações e versionamento do schema
-- **SLF4J + Logback 2.0 / 1.5** — logging em console e arquivo
-- **JUnit 5 + H2 2.2.224** — testes unitários e de integração
+| Tecnologia | Versão | Uso |
+|---|---|---|
+| Java | 21 | Linguagem principal |
+| Gradle | 9.2 | Build e dependências |
+| MySQL | 8.0+ | Banco de dados relacional |
+| Hibernate JPA | 6.4.4 | ORM e persistência |
+| Flyway | 12.3.0 | Migrações e versionamento do schema |
+| SLF4J + Logback | 2.0 / 1.5 | Logging |
+| JUnit 5 + H2 | 5 / 2.2.224 | Testes unitários e de integração |
 
 ---
 
@@ -83,13 +106,21 @@ db.username=seu_usuario
 db.password=sua_senha
 ```
 
-> **⚠️ Atenção:** `database.properties` está no `.gitignore` — suas credenciais não serão versionadas.
+> **⚠️ Atenção:** `database.properties` está no `.gitignore` — suas credenciais **nunca** serão versionadas. Nunca edite o arquivo `.template` com credenciais reais.
 
 ### 4. Execute as migrações
 
 ```bash
 ./gradlew run --args="migrate"
 ```
+
+Isso aplica as 3 migrations Flyway e cria o schema completo:
+
+| Versão | Descrição |
+|---|---|
+| V1 | Estrutura inicial |
+| V2 | Boards, colunas, cards, bloqueios e histórico |
+| V3 | Limpeza de legado: renomeia `columns` → `board_columns` (evita conflito com palavra reservada do SQL), remove a tabela legada `tasks` e padroniza colunas de enum como `VARCHAR(20)` |
 
 ### 5. Inicie a aplicação
 
@@ -109,21 +140,20 @@ db.password=sua_senha
 ./gradlew build
 ```
 
-| Classe de teste | Descrição |
-|---|---|
-| `TaskTest` | 14 testes — operações da entidade `Task` |
-| `AppTest` | 2 testes — validação da aplicação |
-| `MigrationIntegrationTest` | 4 testes — migrações e persistência JPA com H2 |
+Os testes usam banco H2 em memória — nenhuma configuração adicional necessária.
 
----
+| Classe de teste | Testes | Tipo | Descrição |
+|---|---|---|---|
+| `AppTest` | 2 | Unitário | Validação da aplicação |
+| `BoardTest` | 12 | Unitário | Operações de board e colunas |
+| `BoardColumnTest` | 16 | Unitário | Comportamento de colunas |
+| `CardTest` | 18 | Unitário | Ciclo de vida e histórico de cards |
+| `MigrationIntegrationTest` | 1 | Integração | Criação do serviço de migração |
+| `BoardServiceIT` | 6 | Integração | BoardService contra H2 (criar, buscar, excluir, colunas) |
+| `CardServiceIT` | 6 | Integração | CardService contra H2 (criar, mover, cancelar, bloquear) |
+| `ReportServiceIT` | 4 | Integração | ReportService contra H2 (relatórios de conclusão e bloqueio) |
 
-## 🤝 Como Contribuir
-
-1. Faça um fork do repositório
-2. Crie uma branch: `git checkout -b feature/minha-feature`
-3. Faça o commit: `git commit -m 'feat: descrição da mudança'`
-4. Envie para a branch: `git push origin feature/minha-feature`
-5. Abra um Pull Request
+> Os testes de integração (`*IT`) usam `AbstractJpaIT` como base: compartilham um `EntityManagerFactory` por classe e limpam as tabelas antes de cada teste respeitando a ordem de FK.
 
 ---
 
