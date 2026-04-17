@@ -67,9 +67,11 @@ public class ReportService {
             report.append("Criado em: ").append(card.getCreatedAt().format(DATE_FORMATTER)).append("\n");
             report.append("-".repeat(60)).append("\n");
 
-            // Tempo total até conclusão
-            double completionHours = card.getCompletionTimeHours();
-            report.append(String.format("Tempo total até coluna final: %.2f horas\n", completionHours));
+            // Tempo total até conclusão (somente se concluído)
+            String completionLabel = card.getCompletionTimeHours()
+                    .map(hours -> String.format(java.util.Locale.US, "%.2f horas", hours))
+                    .orElse("não concluído");
+            report.append("Tempo total até coluna final: ").append(completionLabel).append("\n");
 
             // Tempo em cada coluna
             report.append("\nTempo em cada coluna:\n");
@@ -92,11 +94,19 @@ public class ReportService {
         report.append("=" .repeat(80)).append("\n");
 
         double avgTime = cards.stream()
-                .mapToDouble(Card::getCompletionTimeHours)
+                .map(Card::getCompletionTimeHours)
+                .flatMap(java.util.Optional::stream)
+                .mapToDouble(Double::doubleValue)
                 .average()
                 .orElse(0);
 
+        long concluded = cards.stream()
+                .map(Card::getCompletionTimeHours)
+                .flatMap(java.util.Optional::stream)
+                .count();
+
         report.append(String.format("Total de cards: %d\n", cards.size()));
+        report.append(String.format("Cards concluídos: %d\n", concluded));
         report.append(String.format("Média de tempo até conclusão: %.2f horas\n", avgTime));
 
         return report.toString();

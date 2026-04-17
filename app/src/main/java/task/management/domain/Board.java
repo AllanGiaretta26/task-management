@@ -23,7 +23,7 @@ import java.util.Objects;
  * Um board é composto por um nome e uma coleção ordenada de colunas.
  *
  * @author Allan Giaretta
- * @version 1.0
+ * @version 2.0
  */
 @Entity
 @Table(name = "boards")
@@ -140,19 +140,29 @@ public class Board {
      *
      * @param currentColumn Coluna atual
      * @return Próxima coluna ou null se não houver
+     * @throws IllegalArgumentException se currentColumn não pertencer a este board
      */
     public BoardColumn getNextColumn(BoardColumn currentColumn) {
+        if (currentColumn == null) {
+            throw new IllegalArgumentException("currentColumn não pode ser null");
+        }
+
         int currentIndex = -1;
         for (int i = 0; i < columns.size(); i++) {
-            if (columns.get(i) == currentColumn || 
-                (columns.get(i).getId() != null && columns.get(i).getId().equals(currentColumn.getId()))) {
+            BoardColumn c = columns.get(i);
+            if (c == currentColumn ||
+                (c.getId() != null && c.getId().equals(currentColumn.getId()))) {
                 currentIndex = i;
                 break;
             }
         }
-        
+
+        if (currentIndex == -1) {
+            throw new IllegalArgumentException(
+                    "Coluna informada não pertence a este board: " + currentColumn);
+        }
+
         // Não inclui coluna de cancelamento no fluxo normal
-        // Encontra a próxima coluna que não seja cancelada
         for (int i = currentIndex + 1; i < columns.size(); i++) {
             BoardColumn next = columns.get(i);
             if (next.getType() != ColumnType.CANCELLED) {

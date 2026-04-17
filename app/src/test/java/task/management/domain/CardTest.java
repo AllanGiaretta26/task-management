@@ -114,7 +114,7 @@ class CardTest {
     }
 
     @Test
-    @DisplayName("Deve calcular tempo de conclusão")
+    @DisplayName("Deve calcular tempo de conclusão quando card passa pela coluna final")
     void shouldCalculateCompletionTimeHours() {
         BoardColumn col1 = new BoardColumn("To Do", ColumnType.INITIAL, 0);
         BoardColumn col2 = new BoardColumn("Done", ColumnType.FINAL, 1);
@@ -122,8 +122,22 @@ class CardTest {
         card.recordColumnEntry(col1);
         card.recordColumnEntry(col2);
 
-        double hours = card.getCompletionTimeHours();
-        assertTrue(hours >= 0);
+        java.util.Optional<Double> hours = card.getCompletionTimeHours();
+        assertTrue(hours.isPresent(), "Card que entrou na coluna final deve ter tempo de conclusão");
+        assertTrue(hours.get() >= 0);
+    }
+
+    @Test
+    @DisplayName("Deve retornar vazio quando card não passou pela coluna final")
+    void shouldReturnEmptyWhenCardNotCompleted() {
+        BoardColumn col1 = new BoardColumn("To Do", ColumnType.INITIAL, 0);
+        BoardColumn col2 = new BoardColumn("In Progress", ColumnType.PENDING, 1);
+
+        card.recordColumnEntry(col1);
+        card.recordColumnEntry(col2);
+
+        assertTrue(card.getCompletionTimeHours().isEmpty(),
+                "Card ainda em andamento não deve ter tempo de conclusão");
     }
 
     @Test

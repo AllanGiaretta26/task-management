@@ -16,11 +16,13 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Entidade que representa um card em uma coluna do board.
@@ -29,7 +31,7 @@ import java.util.Objects;
  * e histórico de movimentação entre colunas.
  *
  * @author Allan Giaretta
- * @version 1.0
+ * @version 2.0
  */
 @Entity
 @Table(name = "cards", indexes = {
@@ -168,15 +170,34 @@ public class Card {
     /**
      * Calcula o tempo que o card levou para ser concluído.
      *
-     * @return Tempo em horas da criação até a coluna final
+     * Considerado "concluído" apenas quando o card entrou na coluna FINAL.
+     * Cards cancelados ou ainda em andamento retornam {@code Optional.empty()}.
+     *
+     * @return Tempo em horas da primeira entrada até a entrada na coluna final,
+     *         ou {@code Optional.empty()} se o card não foi concluído
      */
-    public double getCompletionTimeHours() {
+    public Optional<Double> getCompletionTimeHours() {
         if (columnHistory.isEmpty()) {
-            return 0;
+            return Optional.empty();
         }
-        LocalDateTime firstEntry = columnHistory.get(0).getEnteredAt();
-        LocalDateTime lastEntry = columnHistory.get(columnHistory.size() - 1).getEnteredAt();
-        return java.time.Duration.between(firstEntry, lastEntry).toMinutes() / 60.0;
+
+        LocalDateTime firstEntry = columnHistory.stream()
+                .map(ColumnHistory::getEnteredAt)
+                .min(LocalDateTime::compareTo)
+                .orElse(null);
+
+        LocalDateTime finalEntry = columnHistory.stream()
+                .filter(h -> h.getColumn() != null && h.getColumn().getType() == ColumnType.FINAL)
+                .map(ColumnHistory::getEnteredAt)
+                .min(LocalDateTime::compareTo)
+                .orElse(null);
+
+        if (firstEntry == null || finalEntry == null) {
+            return Optional.empty();
+        }
+
+        double hours = Duration.between(firstEntry, finalEntry).toMinutes() / 60.0;
+        return Optional.of(hours);
     }
 
     // Getters e Setters

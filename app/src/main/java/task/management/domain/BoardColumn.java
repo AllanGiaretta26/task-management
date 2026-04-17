@@ -27,7 +27,7 @@ import java.util.Objects;
  * Cada coluna possui um nome, tipo, posição no board e uma coleção de cards.
  *
  * @author Allan Giaretta
- * @version 1.0
+ * @version 2.0
  */
 @Entity
 @Table(name = "board_columns", indexes = {
@@ -89,12 +89,16 @@ public class BoardColumn {
     /**
      * Remove um card da coluna.
      *
+     * Simétrico a {@link #addCard(Card)}: limpa a referência bidirecional.
+     * Após esta chamada, o card fica sem coluna associada — é responsabilidade
+     * do chamador adicioná-lo a outra coluna antes de persistir, já que a
+     * relação com coluna é obrigatória (nullable = false).
+     *
      * @param card Card a ser removido
      */
     public void removeCard(Card card) {
         cards.remove(card);
-        // Não setar column = null aqui para evitar estado intermediário inválido
-        // A nova coluna será definida por addCard() da coluna destino
+        card.setColumn(null);
     }
 
     /**
