@@ -8,7 +8,6 @@
     <!-- Production persistence unit -->
     <persistence-unit name="task-management-pu" transaction-type="RESOURCE_LOCAL">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
-        <class>task.management.domain.Task</class>
         <class>task.management.domain.Board</class>
         <class>task.management.domain.BoardColumn</class>
         <class>task.management.domain.Card</class>
@@ -35,7 +34,6 @@
     <!-- Test persistence unit with H2 in-memory database -->
     <persistence-unit name="test-pu" transaction-type="RESOURCE_LOCAL">
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
-        <class>task.management.domain.Task</class>
         <class>task.management.domain.Board</class>
         <class>task.management.domain.BoardColumn</class>
         <class>task.management.domain.Card</class>
