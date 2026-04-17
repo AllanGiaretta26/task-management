@@ -27,8 +27,8 @@ dependencies {
     // Logback for SLF4J implementation
     implementation("ch.qos.logback:logback-classic:1.5.3")
 
-    // MySQL Connector dependency
-    implementation("mysql:mysql-connector-java:8.0.33")
+    // MySQL Connector dependency (novo coordenada: com.mysql:mysql-connector-j)
+    implementation("com.mysql:mysql-connector-j:8.3.0")
 
     // H2 Database for testing
     testImplementation("com.h2database:h2:2.2.224")
