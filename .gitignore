@@ -1,18 +1,18 @@
-# Gradle
+# Gradle build outputs and caches
 .gradle/
 build/
 app/build/
 app/bin/
 
-# Database credentials (sensitive information)
+# Database credentials (sensitive — NEVER version this file)
 **/database.properties
 
 # Logs
+*.log
 logs/
 app/logs/
 
 # IDE-specific files
-.qwen/
 .idea/
 *.iml
 *.iws
@@ -20,11 +20,15 @@ app/logs/
 .project
 .settings/
 .classpath
+.vscode/
+.qwen/
 
 # OS generated files
 .DS_Store
 Thumbs.db
 Desktop.ini
+ehthumbs.db
+ehthumbs_vista.db
 
 # Java compiled classes
 **/*.class
@@ -37,6 +41,9 @@ Desktop.ini
 *.tar.gz
 *.rar
 
+# Gradle wrapper JAR must be tracked (needed to bootstrap Gradle without a local install)
+!gradle/wrapper/gradle-wrapper.jar
+
 # Environment variables
 .env
 .env.local
@@ -46,5 +53,11 @@ Desktop.ini
 hs_err_pid*
 replay_pid*
 
-# Documentation
-docs/
+# H2 database files (used in tests — never commit)
+*.mv.db
+*.trace.db
+
+# Temporary files
+*.tmp
+*.swp
+*~

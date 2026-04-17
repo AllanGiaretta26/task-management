@@ -1,63 +1,76 @@
-# Auto detect text files
-* text=auto
+# Default: let Git auto-detect text files and normalize line endings
+* text=auto eol=lf
 
-# Java / Kotlin
-*.java text diff=java
-*.kt text
+# ── Source files ──────────────────────────────────────────────────────────────
+# Enforce LF in the repository for all text source types.
+# On Windows checkouts Git will convert to CRLF if core.autocrlf=true,
+# but the repository always stores LF (cross-platform CI safety).
+
+*.java          text eol=lf diff=java
+*.kt            text eol=lf
+*.groovy        text eol=lf
 
 # Gradle
-*.gradle text
-*.gradle.kts text diff=java
-gradle.properties text
+*.gradle        text eol=lf
+*.gradle.kts    text eol=lf diff=java
+gradle.properties text eol=lf
+settings.gradle.kts text eol=lf
 
-# Wrapper
-gradlew text eol=lf
-gradlew.bat text eol=crlf
+# Config / resources
+*.xml           text eol=lf
+*.properties    text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+*.json          text eol=lf
+*.toml          text eol=lf
 
-# Config
-*.xml text
-*.properties text
-*.yml text
-*.yaml text
-*.json text
+# SQL (Flyway migrations and others)
+*.sql           text eol=lf diff=sql
 
-# SQL
-*.sql text diff=sql
+# Documentation
+*.md            text eol=lf diff=markdown
+*.txt           text eol=lf
+*.html          text eol=lf
+*.css           text eol=lf
 
-# Docs
-*.md text diff=markdown
-*.txt text
+# Scripts — Unix scripts must be LF, Windows scripts CRLF
+*.sh            text eol=lf
+gradlew         text eol=lf
+gradlew.bat     text eol=crlf
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
 
-# Scripts
-*.sh text eol=lf
-*.bat text eol=crlf
+# ── Binary files ──────────────────────────────────────────────────────────────
+# Mark as binary so Git never tries to diff or mangle line endings.
 
-# Binary
-*.jar binary
-*.war binary
-*.ear binary
-*.zip binary
-*.tar.gz binary
-*.rar binary
-*.class binary
+*.jar           binary
+*.war           binary
+*.ear           binary
+*.zip           binary
+*.tar.gz        binary
+*.rar           binary
+*.class         binary
+
+# H2 / SQLite database files
+*.db            binary
+*.mv.db         binary
+*.trace.db      binary
 
 # Images
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
-*.ico binary
-*.svg text
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.webp          binary
+*.bmp           binary
 
-# IDE
-*.iml text
-.project text
-.classpath text
+# Fonts
+*.ttf           binary
+*.otf           binary
+*.woff          binary
+*.woff2         binary
 
-# DB
-*.db binary
-*.h2.db binary
-
-# OS
-.DS_Store binary
-Thumbs.db binary
+# OS metadata — treat as binary to avoid spurious diffs
+.DS_Store       binary
+Thumbs.db       binary
