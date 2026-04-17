@@ -14,45 +14,58 @@ import task.management.ui.BoardMenu;
 /**
  * Main application class for the Task Management system.
  *
- * This class serves as the entry point for the application and provides
- * logging capabilities using SLF4J/Logback.
+ * Entry point for the application. Dispatches to migration execution
+ * or the board menu based on CLI arguments, ensuring resources are
+ * released cleanly even when errors occur.
  *
  * @author Allan Giaretta
- * @version 3.0
+ * @version 4.0
  */
-public class App {
+public final class App {
 
     private static final Logger logger = LoggerFactory.getLogger(App.class);
+    static final String GREETING = "Task Management Board System v3.1";
+
+    private App() {
+    }
 
     /**
-     * Returns a greeting message for the application.
+     * Retorna a mensagem de saudação da aplicação.
+     * Exposto para testes e para uso em telas introdutórias.
      *
-     * @return Greeting message
+     * @return mensagem de saudação
      */
-    public String getGreeting() {
-        return "Task Management Board System v3.0";
+    public static String getGreeting() {
+        return GREETING;
     }
 
     /**
      * Main entry point for the Task Management application.
      *
-     * @param args Command line arguments
+     * @param args Command line arguments ("migrate" runs database migrations)
      */
     public static void main(String[] args) {
-        App app = new App();
-        logger.info(app.getGreeting());
+        logger.info(getGreeting());
         logger.info("Application started successfully");
 
-        if (args.length > 0 && "migrate".equals(args[0])) {
-            logger.info("Running database migrations...");
-            MigrationExecutor.main(args);
-        } else {
-            logger.info("Starting Task Management Board System...");
-            try {
+        int exitCode = 0;
+        try {
+            if (args.length > 0 && "migrate".equals(args[0])) {
+                logger.info("Running database migrations...");
+                MigrationExecutor.run();
+            } else {
+                logger.info("Starting Task Management Board System...");
                 runBoardMenu();
-            } finally {
-                JpaUtil.close();
             }
+        } catch (RuntimeException e) {
+            logger.error("Falha na execução: {}", e.getMessage(), e);
+            exitCode = 1;
+        } finally {
+            JpaUtil.close();
+        }
+
+        if (exitCode != 0) {
+            System.exit(exitCode);
         }
     }
 
@@ -66,4 +79,3 @@ public class App {
         logger.info("Board menu closed by user.");
     }
 }
-

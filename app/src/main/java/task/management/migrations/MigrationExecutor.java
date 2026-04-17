@@ -6,38 +6,50 @@ import org.slf4j.LoggerFactory;
 /**
  * Executor responsável por disparar a execução das migrações do banco de dados.
  *
- * Esta classe atua como um ponto de entrada que utiliza {@link MigrationRunnerFactory}
- * para criar e obter a instância de {@link MigrationService}, executando as migrações
- * e tratando erros que possam ocorrer durante o processo.
+ * Utiliza {@link MigrationRunnerFactory} para criar a instância de
+ * {@link MigrationService} e executar as migrações pendentes.
+ *
+ * <p>A classe deixa que o chamador decida como lidar com falhas (propaga a
+ * exceção em vez de chamar {@code System.exit}), permitindo que recursos
+ * como o {@code EntityManagerFactory} sejam corretamente fechados.
  *
  * @author Allan Giaretta
- * @version 2.0
- * @see MigrationService
- * @see MigrationRunnerFactory
+ * @version 4.0
  */
-public class MigrationExecutor {
+public final class MigrationExecutor {
 
     private static final Logger logger = LoggerFactory.getLogger(MigrationExecutor.class);
 
+    private MigrationExecutor() {
+        throw new UnsupportedOperationException("Classe utilitária não pode ser instanciada");
+    }
+
     /**
-     * Ponto de entrada para a execução das migrações.
+     * Executa as migrações pendentes.
      *
-     * Obtém uma instância de {@link MigrationService} através da factory e executa
-     * as migrações pendentes. Em caso de erro, registra a falha e encerra a aplicação.
+     * @throws MigrationService.MigrationException se houver falha na execução
+     */
+    public static void run() {
+        logger.info("Iniciando execução de migrações do banco de dados...");
+        MigrationService migrationService = MigrationRunnerFactory.createMigrationService();
+        migrationService.runMigrations();
+        logger.info("Migrations executadas com sucesso!");
+    }
+
+    /**
+     * Ponto de entrada standalone para execução via linha de comando.
      *
-     * @param args Argumentos da linha de comando (não utilizados)
+     * Chamado quando a aplicação é iniciada com argumento "migrate".
+     *
+     * @param args Argumentos da linha de comando (ignorados)
      */
     public static void main(String[] args) {
         try {
-            logger.info("Iniciando execução de migrações do banco de dados...");
-            
-            MigrationService migrationService = MigrationRunnerFactory.createMigrationService();
-            migrationService.runMigrations();
-            
-            logger.info("Migrations executadas com sucesso!");
-        } catch (Exception e) {
+            run();
+        } catch (RuntimeException e) {
             logger.error("Erro ao executar migrations: {}", e.getMessage(), e);
-            System.exit(1);
+            // Propaga para o chamador (App) fazer cleanup antes de encerrar
+            throw e;
         }
     }
 }
