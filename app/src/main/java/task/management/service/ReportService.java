@@ -1,6 +1,7 @@
 package task.management.service;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import task.management.domain.Blockade;
 import task.management.domain.Board;
 import task.management.domain.Card;
@@ -15,27 +16,26 @@ import java.util.Locale;
 /**
  * Serviço responsável por gerar relatórios do board.
  *
- * Gera relatórios de tempo de conclusão e bloqueios de cards.
+ * Operação read-only: abre um {@link EntityManager} por chamada via
+ * try-with-resources, lê o necessário e fecha sem transação.
  *
  * @author Allan Giaretta
- * @version 1.0
+ * @version 3.0
  */
 public class ReportService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final Locale BRAZIL = Locale.forLanguageTag("pt-BR");
 
-    private final BoardRepository boardRepository;
-    private final CardRepository cardRepository;
+    private final EntityManagerFactory emf;
 
     /**
      * Construtor do serviço de relatórios.
      *
-     * @param entityManager EntityManager para persistência
+     * @param entityManagerFactory EntityManagerFactory compartilhado
      */
-    public ReportService(EntityManager entityManager) {
-        this.boardRepository = new BoardRepository(entityManager);
-        this.cardRepository = new CardRepository(entityManager);
+    public ReportService(EntityManagerFactory entityManagerFactory) {
+        this.emf = entityManagerFactory;
     }
 
     /**
@@ -47,9 +47,17 @@ public class ReportService {
      * @return Relatório formatado como string
      */
     public String generateCompletionTimeReport(Long boardId) {
-        Board board = findBoardOrThrow(boardId);
-        List<Card> cards = cardRepository.findByBoardId(boardId);
+        try (EntityManager em = emf.createEntityManager()) {
+            BoardRepository boardRepository = new BoardRepository(em);
+            CardRepository cardRepository = new CardRepository(em);
+            Board board = boardRepository.findById(boardId)
+                    .orElseThrow(() -> new ReportServiceException("Board não encontrado com ID: " + boardId));
+            List<Card> cards = cardRepository.findByBoardId(boardId);
+            return buildCompletionReport(board, cards);
+        }
+    }
 
+    private String buildCompletionReport(Board board, List<Card> cards) {
         StringBuilder report = new StringBuilder();
         report.append("=" .repeat(80)).append("\n");
         report.append("RELATÓRIO DE TEMPO DE CONCLUSÃO - ").append(board.getName().toUpperCase(BRAZIL)).append("\n");
@@ -69,7 +77,7 @@ public class ReportService {
 
             // Tempo total até conclusão (somente se concluído)
             String completionLabel = card.getCompletionTimeHours()
-                    .map(hours -> String.format(java.util.Locale.US, "%.2f horas", hours))
+                    .map(hours -> String.format(Locale.US, "%.2f horas", hours))
                     .orElse("não concluído");
             report.append("Tempo total até coluna final: ").append(completionLabel).append("\n");
 
@@ -121,9 +129,17 @@ public class ReportService {
      * @return Relatório formatado como string
      */
     public String generateBlockadeReport(Long boardId) {
-        Board board = findBoardOrThrow(boardId);
-        List<Card> cards = cardRepository.findByBoardId(boardId);
+        try (EntityManager em = emf.createEntityManager()) {
+            BoardRepository boardRepository = new BoardRepository(em);
+            CardRepository cardRepository = new CardRepository(em);
+            Board board = boardRepository.findById(boardId)
+                    .orElseThrow(() -> new ReportServiceException("Board não encontrado com ID: " + boardId));
+            List<Card> cards = cardRepository.findByBoardId(boardId);
+            return buildBlockadeReport(board, cards);
+        }
+    }
 
+    private String buildBlockadeReport(Board board, List<Card> cards) {
         StringBuilder report = new StringBuilder();
         report.append("=" .repeat(80)).append("\n");
         report.append("RELATÓRIO DE BLOQUEIOS - ").append(board.getName().toUpperCase(BRAZIL)).append("\n");
@@ -193,14 +209,4 @@ public class ReportService {
         return report.toString();
     }
 
-    /**
-     * Busca um board ou lança exceção se não encontrado.
-     *
-     * @param boardId ID do board
-     * @return Board encontrado
-     */
-    private Board findBoardOrThrow(Long boardId) {
-        return boardRepository.findById(boardId)
-                .orElseThrow(() -> new ReportServiceException("Board não encontrado com ID: " + boardId));
-    }
 }

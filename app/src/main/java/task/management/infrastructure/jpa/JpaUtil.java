@@ -38,10 +38,23 @@ public final class JpaUtil {
      * @return EntityManager configurado
      */
     public static EntityManager getEntityManager() {
+        return getEntityManagerFactory().createEntityManager();
+    }
+
+    /**
+     * Obtém o EntityManagerFactory singleton.
+     *
+     * Services devem receber este factory e abrir/fechar um {@link EntityManager}
+     * por operação via try-with-resources, mantendo o ciclo de vida curto e
+     * evitando estado compartilhado entre chamadas.
+     *
+     * @return EntityManagerFactory configurado
+     */
+    public static EntityManagerFactory getEntityManagerFactory() {
         if (entityManagerFactory == null || !entityManagerFactory.isOpen()) {
             entityManagerFactory = createEntityManagerFactory();
         }
-        return entityManagerFactory.createEntityManager();
+        return entityManagerFactory;
     }
 
     /**

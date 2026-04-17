@@ -1,39 +1,42 @@
 package task.management.service;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import task.management.domain.Blockade;
 import task.management.domain.Board;
 import task.management.domain.BoardColumn;
 import task.management.domain.Card;
+import task.management.domain.ColumnHistory;
 import task.management.domain.ColumnType;
+import task.management.infrastructure.jpa.TransactionTemplate;
 import task.management.infrastructure.repository.BoardRepository;
 import task.management.infrastructure.repository.CardRepository;
 
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Serviço responsável pelas regras de negócio relacionadas aos cards.
  *
- * Implementa regras de movimentação entre colunas, bloqueio/desbloqueio
- * e validações de negócio.
+ * Cada operação abre seu próprio {@link EntityManager} via try-with-resources
+ * e força a inflação do grafo do card (coluna + bloqueios + histórico) antes
+ * de fechar o EM, retornando a entidade detached.
  *
  * @author Allan Giaretta
- * @version 1.0
+ * @version 4.0
  */
 public class CardService {
 
-    private final BoardRepository boardRepository;
-    private final CardRepository cardRepository;
-    private final EntityManager entityManager;
+    private final EntityManagerFactory emf;
 
     /**
      * Construtor do serviço de card.
      *
-     * @param entityManager EntityManager para persistência
+     * @param entityManagerFactory EntityManagerFactory compartilhado
      */
-    public CardService(EntityManager entityManager) {
-        this.entityManager = entityManager;
-        this.boardRepository = new BoardRepository(entityManager);
-        this.cardRepository = new CardRepository(entityManager);
+    public CardService(EntityManagerFactory entityManagerFactory) {
+        this.emf = entityManagerFactory;
     }
 
     /**
@@ -42,122 +45,98 @@ public class CardService {
      * @param boardId ID do board
      * @param title Título do card
      * @param description Descrição do card
-     * @return Card criado
+     * @return Card criado (detached, com coluna e histórico carregados)
      */
     public Card createCard(Long boardId, String title, String description) {
-        Board board = findBoardOrThrow(boardId);
-        BoardColumn initialColumn = board.findColumnByType(ColumnType.INITIAL);
+        return executeInTransaction((em, cardRepo) -> {
+            BoardRepository boardRepo = new BoardRepository(em);
+            Board board = boardRepo.findById(boardId)
+                    .orElseThrow(() -> new CardServiceException("Board não encontrado com ID: " + boardId));
 
-        if (initialColumn == null) {
-            throw new CardServiceException("Board não possui coluna inicial definida");
-        }
+            BoardColumn initialColumn = board.findColumnByType(ColumnType.INITIAL);
+            if (initialColumn == null) {
+                throw new CardServiceException("Board não possui coluna inicial definida");
+            }
 
-        Card card = new Card(title, description);
-        initialColumn.addCard(card);
-        card.recordColumnEntry(initialColumn);
-
-        entityManager.getTransaction().begin();
-        try {
-            cardRepository.save(card);
-            entityManager.getTransaction().commit();
-            return card;
-        } catch (Exception e) {
-            entityManager.getTransaction().rollback();
-            throw new CardServiceException("Erro ao criar card: " + e.getMessage(), e);
-        }
+            Card card = new Card(title, description);
+            initialColumn.addCard(card);
+            card.recordColumnEntry(initialColumn);
+            return cardRepo.save(card);
+        }, "Erro ao criar card");
     }
 
     /**
      * Move um card para a próxima coluna no fluxo do board.
      *
-     * Regras:
-     * - Cards devem seguir a ordem das colunas sem pular etapas
-     * - Cards bloqueados não podem ser movidos
-     * - Cards de qualquer coluna (exceto final) podem ser movidos para cancelada
-     *
      * @param cardId ID do card
-     * @param targetColumnId ID da coluna destino (opcional, se null move para próxima)
-     * @return Card movido
+     * @param targetColumnId ID da coluna destino (opcional — null move para a próxima)
+     * @return Card movido (detached)
      */
     public Card moveCard(Long cardId, Long targetColumnId) {
-        Card card = findCardOrThrow(cardId);
+        return executeInTransaction((em, cardRepo) -> {
+            Card card = cardRepo.findById(cardId)
+                    .orElseThrow(() -> new CardServiceException("Card não encontrado com ID: " + cardId));
 
-        if (card.isBlocked()) {
-            throw new CardServiceException("Não é possível mover um card bloqueado. Desbloqueie primeiro.");
-        }
-
-        BoardColumn currentColumn = card.getColumn();
-        Board board = currentColumn.getBoard();
-
-        BoardColumn targetColumn;
-        if (targetColumnId != null) {
-            targetColumn = board.findColumnById(targetColumnId);
-            if (targetColumn == null) {
-                throw new CardServiceException("Coluna destino não encontrada");
+            if (card.isBlocked()) {
+                throw new CardServiceException("Não é possível mover um card bloqueado. Desbloqueie primeiro.");
             }
-            validateMoveToColumn(card, currentColumn, targetColumn);
-        } else {
-            targetColumn = board.getNextColumn(currentColumn);
-            if (targetColumn == null) {
-                throw new CardServiceException("Não há próxima coluna para mover o card");
+
+            BoardColumn currentColumn = card.getColumn();
+            Board board = currentColumn.getBoard();
+
+            BoardColumn targetColumn;
+            if (targetColumnId != null) {
+                targetColumn = board.findColumnById(targetColumnId);
+                if (targetColumn == null) {
+                    throw new CardServiceException("Coluna destino não encontrada");
+                }
+                validateMoveToColumn(currentColumn, targetColumn);
+            } else {
+                targetColumn = board.getNextColumn(currentColumn);
+                if (targetColumn == null) {
+                    throw new CardServiceException("Não há próxima coluna para mover o card");
+                }
             }
-        }
 
-        // Remove da coluna atual e adiciona na destino
-        currentColumn.removeCard(card);
-        targetColumn.addCard(card);
-        card.recordColumnEntry(targetColumn);
-
-        entityManager.getTransaction().begin();
-        try {
-            cardRepository.save(card);
-            entityManager.getTransaction().commit();
-            return card;
-        } catch (Exception e) {
-            entityManager.getTransaction().rollback();
-            throw new CardServiceException("Erro ao mover card: " + e.getMessage(), e);
-        }
+            currentColumn.removeCard(card);
+            targetColumn.addCard(card);
+            card.recordColumnEntry(targetColumn);
+            return cardRepo.save(card);
+        }, "Erro ao mover card");
     }
 
     /**
      * Move um card diretamente para a coluna de cancelamento.
      *
      * @param cardId ID do card
-     * @return Card cancelado
+     * @return Card cancelado (detached)
      */
     public Card cancelCard(Long cardId) {
-        Card card = findCardOrThrow(cardId);
+        return executeInTransaction((em, cardRepo) -> {
+            Card card = cardRepo.findById(cardId)
+                    .orElseThrow(() -> new CardServiceException("Card não encontrado com ID: " + cardId));
 
-        if (card.isBlocked()) {
-            throw new CardServiceException("Não é possível cancelar um card bloqueado. Desbloqueie primeiro.");
-        }
+            if (card.isBlocked()) {
+                throw new CardServiceException("Não é possível cancelar um card bloqueado. Desbloqueie primeiro.");
+            }
 
-        BoardColumn currentColumn = card.getColumn();
-        Board board = currentColumn.getBoard();
+            BoardColumn currentColumn = card.getColumn();
+            Board board = currentColumn.getBoard();
 
-        BoardColumn cancelledColumn = board.findColumnByType(ColumnType.CANCELLED);
-        if (cancelledColumn == null) {
-            throw new CardServiceException("Board não possui coluna de cancelamento definida");
-        }
+            BoardColumn cancelledColumn = board.findColumnByType(ColumnType.CANCELLED);
+            if (cancelledColumn == null) {
+                throw new CardServiceException("Board não possui coluna de cancelamento definida");
+            }
 
-        // Não permite cancelar se já estiver na coluna final
-        if (currentColumn.isFinal()) {
-            throw new CardServiceException("Não é possível cancelar um card que já está na coluna final");
-        }
+            if (currentColumn.isFinal()) {
+                throw new CardServiceException("Não é possível cancelar um card que já está na coluna final");
+            }
 
-        currentColumn.removeCard(card);
-        cancelledColumn.addCard(card);
-        card.recordColumnEntry(cancelledColumn);
-
-        entityManager.getTransaction().begin();
-        try {
-            cardRepository.save(card);
-            entityManager.getTransaction().commit();
-            return card;
-        } catch (Exception e) {
-            entityManager.getTransaction().rollback();
-            throw new CardServiceException("Erro ao cancelar card: " + e.getMessage(), e);
-        }
+            currentColumn.removeCard(card);
+            cancelledColumn.addCard(card);
+            card.recordColumnEntry(cancelledColumn);
+            return cardRepo.save(card);
+        }, "Erro ao cancelar card");
     }
 
     /**
@@ -165,21 +144,15 @@ public class CardService {
      *
      * @param cardId ID do card
      * @param reason Motivo do bloqueio
-     * @return Card bloqueado
+     * @return Card bloqueado (detached)
      */
     public Card blockCard(Long cardId, String reason) {
-        Card card = findCardOrThrow(cardId);
-        card.block(reason);
-
-        entityManager.getTransaction().begin();
-        try {
-            cardRepository.save(card);
-            entityManager.getTransaction().commit();
-            return card;
-        } catch (Exception e) {
-            entityManager.getTransaction().rollback();
-            throw new CardServiceException("Erro ao bloquear card: " + e.getMessage(), e);
-        }
+        return executeInTransaction((em, cardRepo) -> {
+            Card card = cardRepo.findById(cardId)
+                    .orElseThrow(() -> new CardServiceException("Card não encontrado com ID: " + cardId));
+            card.block(reason);
+            return cardRepo.save(card);
+        }, "Erro ao bloquear card");
     }
 
     /**
@@ -187,53 +160,91 @@ public class CardService {
      *
      * @param cardId ID do card
      * @param reason Motivo do desbloqueio
-     * @return Card desbloqueado
+     * @return Card desbloqueado (detached)
      */
     public Card unblockCard(Long cardId, String reason) {
-        Card card = findCardOrThrow(cardId);
-        card.unblock(reason);
+        return executeInTransaction((em, cardRepo) -> {
+            Card card = cardRepo.findById(cardId)
+                    .orElseThrow(() -> new CardServiceException("Card não encontrado com ID: " + cardId));
+            card.unblock(reason);
+            return cardRepo.save(card);
+        }, "Erro ao desbloquear card");
+    }
 
-        entityManager.getTransaction().begin();
-        try {
-            cardRepository.save(card);
-            entityManager.getTransaction().commit();
-            return card;
-        } catch (Exception e) {
-            entityManager.getTransaction().rollback();
-            throw new CardServiceException("Erro ao desbloquear card: " + e.getMessage(), e);
+    /**
+     * Lista todos os cards de um board (com coluna e histórico carregados).
+     *
+     * @param boardId ID do board
+     * @return Lista de cards detached
+     */
+    public List<Card> listCardsByBoard(Long boardId) {
+        try (EntityManager em = emf.createEntityManager()) {
+            BoardRepository boardRepo = new BoardRepository(em);
+            if (boardRepo.findById(boardId).isEmpty()) {
+                throw new CardServiceException("Board não encontrado com ID: " + boardId);
+            }
+            CardRepository cardRepo = new CardRepository(em);
+            List<Card> cards = cardRepo.findByBoardId(boardId);
+            cards.forEach(this::initializeCardGraph);
+            return cards;
         }
     }
 
     /**
-     * Lista todos os cards de um board.
-     *
-     * @param boardId ID do board
-     * @return Lista de cards
-     */
-    public List<Card> listCardsByBoard(Long boardId) {
-        findBoardOrThrow(boardId);
-        return cardRepository.findByBoardId(boardId);
-    }
-
-    /**
-     * Busca um card pelo ID.
+     * Busca um card pelo ID (com grafo inflado).
      *
      * @param cardId ID do card
-     * @return Card encontrado
+     * @return Card encontrado (detached)
      */
     public Card findCardById(Long cardId) {
-        return findCardOrThrow(cardId);
+        try (EntityManager em = emf.createEntityManager()) {
+            CardRepository cardRepo = new CardRepository(em);
+            Card card = cardRepo.findById(cardId)
+                    .orElseThrow(() -> new CardServiceException("Card não encontrado com ID: " + cardId));
+            initializeCardGraph(card);
+            return card;
+        }
     }
 
-    /**
-     * Valida se a movimentação do card para a coluna destino é válida.
-     *
-     * @param card Card sendo movido
-     * @param currentColumn Coluna atual
-     * @param targetColumn Coluna destino
-     */
-    private void validateMoveToColumn(Card card, BoardColumn currentColumn, BoardColumn targetColumn) {
-        // Pode mover para coluna de cancelamento de qualquer lugar (exceto final)
+    @FunctionalInterface
+    private interface CardOperation {
+        Card run(EntityManager em, CardRepository cardRepo);
+    }
+
+    private Card executeInTransaction(CardOperation operation, String errorPrefix) {
+        try (EntityManager em = emf.createEntityManager()) {
+            CardRepository cardRepo = new CardRepository(em);
+            TransactionTemplate tx = new TransactionTemplate(em);
+            Function<Exception, RuntimeException> wrapper = e -> (e instanceof CardServiceException cse)
+                    ? cse
+                    : new CardServiceException(errorPrefix + ": " + e.getMessage(), e);
+            Supplier<Card> action = () -> operation.run(em, cardRepo);
+            Card saved = tx.execute(action, wrapper);
+            initializeCardGraph(saved);
+            return saved;
+        }
+    }
+
+    private void initializeCardGraph(Card card) {
+        if (card == null) {
+            return;
+        }
+        BoardColumn column = card.getColumn();
+        if (column != null) {
+            column.getName();
+            column.getType();
+        }
+        for (Blockade blockade : card.getBlockades()) {
+            blockade.getReason();
+        }
+        for (ColumnHistory entry : card.getColumnHistory()) {
+            if (entry.getColumn() != null) {
+                entry.getColumn().getName();
+            }
+        }
+    }
+
+    private void validateMoveToColumn(BoardColumn currentColumn, BoardColumn targetColumn) {
         if (targetColumn.isCancelled()) {
             if (currentColumn.isFinal()) {
                 throw new CardServiceException("Não é possível mover um card da coluna final para cancelada");
@@ -241,34 +252,11 @@ public class CardService {
             return;
         }
 
-        // Verifica se a coluna destino é a próxima na sequência
         Board board = currentColumn.getBoard();
         BoardColumn nextColumn = board.getNextColumn(currentColumn);
 
         if (nextColumn == null || !nextColumn.getId().equals(targetColumn.getId())) {
             throw new CardServiceException("Não é possível pular colunas. Mova o card para a próxima coluna na sequência.");
         }
-    }
-
-    /**
-     * Busca um card ou lança exceção se não encontrado.
-     *
-     * @param cardId ID do card
-     * @return Card encontrado
-     */
-    private Card findCardOrThrow(Long cardId) {
-        return cardRepository.findById(cardId)
-                .orElseThrow(() -> new CardServiceException("Card não encontrado com ID: " + cardId));
-    }
-
-    /**
-     * Busca um board ou lança exceção se não encontrado.
-     *
-     * @param boardId ID do board
-     * @return Board encontrado
-     */
-    private Board findBoardOrThrow(Long boardId) {
-        return boardRepository.findById(boardId)
-                .orElseThrow(() -> new CardServiceException("Board não encontrado com ID: " + boardId));
     }
 }

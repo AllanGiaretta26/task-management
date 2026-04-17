@@ -1,13 +1,18 @@
 package task.management.ui;
 
-import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import task.management.domain.Board;
 import task.management.domain.BoardColumn;
 import task.management.domain.Card;
 import task.management.infrastructure.jpa.JpaUtil;
 import task.management.service.BoardService;
+import task.management.service.BoardServiceException;
 import task.management.service.CardService;
+import task.management.service.CardServiceException;
 import task.management.service.ReportService;
+import task.management.service.ReportServiceException;
 
 import java.util.List;
 import java.util.Scanner;
@@ -22,6 +27,8 @@ import java.util.Scanner;
  */
 public class BoardMenu {
 
+    private static final Logger logger = LoggerFactory.getLogger(BoardMenu.class);
+
     private final Scanner scanner;
     private final BoardService boardService;
     private final CardService cardService;
@@ -32,10 +39,10 @@ public class BoardMenu {
      */
     public BoardMenu() {
         this.scanner = new Scanner(System.in);
-        EntityManager em = JpaUtil.getEntityManager();
-        this.boardService = new BoardService(em);
-        this.cardService = new CardService(em);
-        this.reportService = new ReportService(em);
+        EntityManagerFactory emf = JpaUtil.getEntityManagerFactory();
+        this.boardService = new BoardService(emf);
+        this.cardService = new CardService(emf);
+        this.reportService = new ReportService(emf);
     }
 
     /**
@@ -67,8 +74,14 @@ public class BoardMenu {
                     }
                     default -> System.out.println("Opção inválida! Tente novamente.");
                 }
-            } catch (Exception e) {
+            } catch (BoardServiceException | CardServiceException | ReportServiceException e) {
+                // Erro de regra de negócio — apenas informa o usuário
                 System.out.println("Erro: " + e.getMessage());
+            } catch (RuntimeException e) {
+                // Bug inesperado — registra com stack trace para diagnóstico
+                logger.error("Erro inesperado no menu principal", e);
+                System.out.println("Erro inesperado: " + e.getMessage()
+                        + " (consulte o log para mais detalhes)");
             }
         }
     }
@@ -221,8 +234,12 @@ public class BoardMenu {
 
                 // Recarrega o board para manter os dados atualizados
                 board = boardService.findBoardById(board.getId());
-            } catch (Exception e) {
+            } catch (BoardServiceException | CardServiceException | ReportServiceException e) {
                 System.out.println("Erro: " + e.getMessage());
+            } catch (RuntimeException e) {
+                logger.error("Erro inesperado no menu do board '{}'", board.getName(), e);
+                System.out.println("Erro inesperado: " + e.getMessage()
+                        + " (consulte o log para mais detalhes)");
             }
         }
     }

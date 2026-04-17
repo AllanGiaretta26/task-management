@@ -1,9 +1,11 @@
 package task.management.infrastructure.repository;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import task.management.domain.Board;
+import task.management.domain.BoardColumn;
+import task.management.domain.Card;
+import task.management.domain.ColumnHistory;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,12 +17,11 @@ import java.util.Optional;
  * e fornecer uma interface limpa para a camada de serviço.
  *
  * @author Allan Giaretta
- * @version 1.0
+ * @version 2.0
  */
 public class BoardRepository {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
 
     /**
      * Construtor que recebe o EntityManager.
@@ -98,5 +99,45 @@ public class BoardRepository {
      */
     public void deleteById(Long id) {
         findById(id).ifPresent(this::delete);
+    }
+
+    /**
+     * Força o carregamento do grafo lazy Board → Colunas → Cards → (Blockades, Histórico).
+     *
+     * Chamado após commit e antes de fechar o {@link EntityManager}, permitindo
+     * que o consumidor (UI) navegue o grafo mesmo após a entidade ficar detached.
+     * Evita {@code MultipleBagFetchException} ao trocar fetch joins em JPQL por
+     * navegação em Java. N+1 queries são aceitáveis no volume de um CLI mono-usuário.
+     *
+     * @param board Board carregado (pode ser null — no-op nesse caso)
+     */
+    public void initializeGraph(Board board) {
+        if (board == null) {
+            return;
+        }
+        for (BoardColumn column : board.getColumns()) {
+            for (Card card : column.getCards()) {
+                card.getBlockades().size();
+                for (ColumnHistory history : card.getColumnHistory()) {
+                    if (history.getColumn() != null) {
+                        history.getColumn().getName();
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Sobrecarga que infla o grafo de cada board da lista.
+     *
+     * @param boards Boards a inflar (null ou vazio — no-op)
+     */
+    public void initializeGraph(List<Board> boards) {
+        if (boards == null) {
+            return;
+        }
+        for (Board board : boards) {
+            initializeGraph(board);
+        }
     }
 }
