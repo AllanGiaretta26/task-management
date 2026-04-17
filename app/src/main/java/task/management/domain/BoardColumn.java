@@ -30,7 +30,7 @@ import java.util.Objects;
  * @version 1.0
  */
 @Entity
-@Table(name = "columns", indexes = {
+@Table(name = "board_columns", indexes = {
     @Index(name = "idx_column_board_position", columnList = "board_id, position")
 })
 public class BoardColumn {
@@ -43,7 +43,7 @@ public class BoardColumn {
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20)")
     private ColumnType type;
 
     @Column(nullable = false)
