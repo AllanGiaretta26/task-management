@@ -24,7 +24,7 @@ import java.util.function.Supplier;
  * de fechar o EM, retornando a entidade detached.
  *
  * @author Allan Giaretta
- * @version 4.0
+ * @version 2.0
  */
 public class CardService {
 

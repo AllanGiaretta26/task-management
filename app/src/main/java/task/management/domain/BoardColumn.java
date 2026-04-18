@@ -27,7 +27,7 @@ import java.util.Objects;
  * Cada coluna possui um nome, tipo, posição no board e uma coleção de cards.
  *
  * @author Allan Giaretta
- * @version 2.0
+ * @version 3.0
  */
 @Entity
 @Table(name = "board_columns", indexes = {

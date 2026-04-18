@@ -23,7 +23,7 @@ import java.util.Scanner;
  * Implementa a interface de linha de comando (CLI) para o sistema de gerenciamento de tarefas.
  *
  * @author Allan Giaretta
- * @version 1.0
+ * @version 2.0
  */
 public class BoardMenu {
 

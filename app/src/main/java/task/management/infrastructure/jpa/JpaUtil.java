@@ -18,7 +18,7 @@ import java.util.Map;
  * {@link DatabaseConfigLoader} a partir do arquivo {@code database.properties}.
  *
  * @author Allan Giaretta
- * @version 3.0
+ * @version 4.0
  */
 public final class JpaUtil {
 

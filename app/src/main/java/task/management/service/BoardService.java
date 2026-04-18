@@ -18,7 +18,7 @@ import java.util.List;
  * de UI pode navegar o grafo sem risco de {@code LazyInitializationException}.
  *
  * @author Allan Giaretta
- * @version 4.0
+ * @version 2.0
  */
 public class BoardService {
 

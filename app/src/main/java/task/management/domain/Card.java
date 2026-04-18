@@ -31,7 +31,7 @@ import java.util.Optional;
  * e histórico de movimentação entre colunas.
  *
  * @author Allan Giaretta
- * @version 2.0
+ * @version 3.0
  */
 @Entity
 @Table(name = "cards", indexes = {

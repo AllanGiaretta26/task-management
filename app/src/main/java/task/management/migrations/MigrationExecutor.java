@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
  * como o {@code EntityManagerFactory} sejam corretamente fechados.
  *
  * @author Allan Giaretta
- * @version 4.0
+ * @version 3.0
  */
 public final class MigrationExecutor {
 

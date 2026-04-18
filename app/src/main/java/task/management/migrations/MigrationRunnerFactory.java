@@ -14,7 +14,7 @@ import task.management.infrastructure.config.DatabaseConfigLoader;
  * são carregadas pelo {@link DatabaseConfigLoader}.
  *
  * @author Allan Giaretta
- * @version 5.0
+ * @version 4.0
  */
 public class MigrationRunnerFactory {
 
