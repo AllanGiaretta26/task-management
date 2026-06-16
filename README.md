@@ -162,5 +162,4 @@ Os testes usam banco H2 em memória — nenhuma configuração adicional necess�
 Este projeto está sob a licença [MIT](LICENSE).
 
 ---
-
-Desenvolvido por **Allan Giaretta**.
+Desenvolvido por [Allan Giaretta](https://github.com/AllanGiaretta26).
