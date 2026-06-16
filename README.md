@@ -10,7 +10,7 @@
 
 ---
 
-## 📋 Descrição
+## Descrição
 
 O **Task Management System** é uma aplicação de linha de comando para gerenciamento de projetos no estilo Kanban. Cards percorrem colunas em ordem sequencial, podem ser bloqueados com justificativa registrada, e todo o histórico de movimentação é rastreado para geração de relatórios.
 
@@ -18,7 +18,7 @@ O projeto demonstra boas práticas de arquitetura em camadas (UI → Service →
 
 ---
 
-## 🚦 Status do Projeto
+## Status do Projeto
 
 ![Status](https://img.shields.io/badge/status-concluído-brightgreen)
 
@@ -26,7 +26,7 @@ Funcionalidades principais implementadas e cobertas por 65 testes (unitários + 
 
 ---
 
-## 🏗️ Arquitetura
+## Arquitetura
 
 A aplicação segue o padrão de camadas:
 
@@ -47,7 +47,7 @@ UI (BoardMenu)
 
 ---
 
-## 🛠️ Tecnologias
+## Tecnologias
 
 ![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white)
 ![Gradle](https://img.shields.io/badge/Gradle-9.2-02303A?logo=gradle&logoColor=white)
@@ -68,7 +68,7 @@ UI (BoardMenu)
 
 ---
 
-## 🔧 Como Instalar e Rodar
+## Como Instalar e Rodar
 
 ### Pré-requisitos
 
@@ -106,7 +106,7 @@ db.username=seu_usuario
 db.password=sua_senha
 ```
 
-> **⚠️ Atenção:** `database.properties` está no `.gitignore` — suas credenciais **nunca** serão versionadas. Nunca edite o arquivo `.template` com credenciais reais.
+> **Atenção:** `database.properties` está no `.gitignore` — suas credenciais **nunca** serão versionadas. Nunca edite o arquivo `.template` com credenciais reais.
 
 ### 4. Execute as migrações
 
@@ -130,7 +130,7 @@ Isso aplica as 3 migrations Flyway e cria o schema completo:
 
 ---
 
-## 🧪 Como Testar
+## Como Testar
 
 ```bash
 # Todos os testes
@@ -157,10 +157,9 @@ Os testes usam banco H2 em memória — nenhuma configuração adicional necess�
 
 ---
 
-## 📄 Licença
+## Licença
 
 Este projeto está sob a licença [MIT](LICENSE).
 
 ---
-
-Desenvolvido por **Allan Giaretta**.
+Desenvolvido por [Allan Giaretta](https://github.com/AllanGiaretta26).
